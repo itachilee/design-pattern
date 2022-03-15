@@ -7,6 +7,7 @@ import (
 	"github.com/itachilee/designpattern/factory"
 	"github.com/itachilee/designpattern/mediator"
 	"github.com/itachilee/designpattern/memento"
+	"github.com/itachilee/designpattern/observer"
 	"github.com/itachilee/designpattern/prototype"
 )
 
@@ -22,4 +23,7 @@ func main() {
 	fmt.Println()
 
 	memento.Test()
+	fmt.Println()
+
+	observer.Test()
 }
