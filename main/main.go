@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 
@@ -11,8 +12,10 @@ import (
 
 func main() {
 	xlsxTT()
-	// initConf()
+	initConf()
 	// ExampleClient(newRedisOptions())
+
+	saveAddressToReids(newRedisOptions())
 }
 
 type redisConf struct {
@@ -115,14 +118,15 @@ func getAddressFactorySingleInstance() *addressCode {
 	return dressFactorySingleInstance
 }
 
+var ctx = context.Background()
 
-
-func saveAddressToReids(opt *redis.Options){
+func saveAddressToReids(opt *redis.Options) {
 
 	rdb := redis.NewClient(opt)
-	for  getAddressFactorySingleInstance.addressCode
-	err := rdb.Set(ctx, "key", "value", 0).Err()
+	var code = "chinaCode"
+	err := rdb.HSet(ctx, code, getAddressFactorySingleInstance().addressCode).Err()
 	if err != nil {
 		panic(err)
 	}
+
 }
