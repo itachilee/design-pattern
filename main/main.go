@@ -2,55 +2,127 @@ package main
 
 import (
 	"fmt"
-	"strconv"
-	"time"
+	"log"
 
-	"github.com/itachilee/designpattern/builder"
-	"github.com/itachilee/designpattern/factory"
-	"github.com/itachilee/designpattern/mediator"
-	"github.com/itachilee/designpattern/memento"
-	"github.com/itachilee/designpattern/observer"
-	"github.com/itachilee/designpattern/prototype"
+	"github.com/go-redis/redis/v8"
+	"github.com/tealeg/xlsx/v3"
+	"gopkg.in/ini.v1"
 )
 
 func main() {
-	JobTest()
-	time.Sleep(1 << 10)
+	xlsxTT()
+	// initConf()
+	// ExampleClient(newRedisOptions())
 }
 
-func Test() {
-	builder.Test()
-
-	fmt.Println()
-	factory.Test()
-	fmt.Println()
-	prototype.Test()
-	fmt.Println()
-
-	mediator.Test()
-	fmt.Println()
-
-	memento.Test()
-	fmt.Println()
-
-	observer.Test()
+type redisConf struct {
+	addr     string
+	username string
+	password string
+	db       int
 }
 
-type job struct {
-	name string
-}
+var redisServer = &redisConf{}
 
-func worker(jobChan <-chan job) {
-	for job := range jobChan {
-		fmt.Printf("dequeue jobchan %s\n", job.name)
+func initConf() {
+	cfg, err := ini.Load("my.ini")
+	if err != nil {
+		log.Fatalf("cannot load ini :%v", err)
+	}
+	err = cfg.Section("redis").MapTo(redisServer)
+	if err != nil {
+		log.Fatalf("cannot map config from ini :%v", err)
 	}
 }
 
-func JobTest() {
-	jobChan := make(chan job)
-	go worker(jobChan)
-	for i := 0; i < 100; i++ {
-		jobChan <- job{name: strconv.Itoa(i)}
-		fmt.Printf("enqueue jobchan %s\n", strconv.Itoa(i))
+func newRedisOptions() *redis.Options {
+
+	return &redis.Options{
+		Addr:     redisServer.addr,
+		Password: redisServer.password, // no password set default ""
+		Username: redisServer.username, //no password set default ""
+		DB:       redisServer.db,       // use default DB 0
+	}
+}
+
+func xlsxTT() {
+	// open an existing file
+	wb, err := xlsx.OpenFile("citycode.xlsx")
+	if err != nil {
+		panic(err)
+	}
+	// wb now contains a reference to the workbook
+	// show all the sheets in the workbook
+	fmt.Println("Sheets in this file:")
+	for i, sh := range wb.Sheets {
+		fmt.Println(i, sh.Name)
+		sh, ok := wb.Sheet[sh.Name]
+		if !ok {
+			fmt.Println("Sheet does not exist")
+			return
+		}
+		fmt.Println("Max row in sheet:", sh.MaxRow)
+		err = sh.ForEachRow(rowVisitor)
+		fmt.Println("Err=", err)
+	}
+
+	fmt.Println("----")
+	fmt.Printf(" map :%v", getAddressFactorySingleInstance().addressCode)
+}
+func cellVisitor(c *xlsx.Cell) error {
+	value, err := c.FormattedValue()
+	if err != nil {
+		fmt.Println(err.Error())
+	} else {
+		cnum, _ := c.GetCoordinates()
+		fmt.Printf(" [%d] value: %s \n", cnum, value)
+
+		// getAddressFactorySingleInstance().addressCode[value] =cnum
+	}
+	return err
+}
+
+func rowVisitor(r *xlsx.Row) error {
+	cnum := r.GetCoordinate()
+
+	if cnum >= 1 {
+		name := r.GetCell(0)
+		adcode := r.GetCell(1)
+		nameValue, err := name.FormattedValue()
+		adcodeValue, err := adcode.FormattedValue()
+		if err != nil {
+			fmt.Println(err.Error())
+			return nil
+		} else {
+			getAddressFactorySingleInstance().addressCode[adcodeValue] = nameValue
+		}
+
+	}
+	return nil
+}
+
+type addressCode struct {
+	addressCode map[string]string
+}
+
+var (
+	dressFactorySingleInstance = &addressCode{
+		addressCode: make(map[string]string),
+	}
+)
+
+func getAddressFactorySingleInstance() *addressCode {
+	return dressFactorySingleInstance
+}
+
+
+
+func saveAddressToReids(opt *redis.Options){
+
+	rdb := redis.NewClient(opt)
+	for  getAddressFactorySingleInstance.addressCode
+	err := rdb.Set(ctx, "key", "value", 0).Err()
+	if err != nil {
+		panic(err)
 	}
 }
