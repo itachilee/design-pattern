@@ -3,16 +3,40 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
+	"os"
 
 	"github.com/go-redis/redis/v8"
+	"github.com/nullseed/logruseq"
+	log "github.com/sirupsen/logrus"
 	"github.com/tealeg/xlsx/v3"
 	"gopkg.in/ini.v1"
 )
 
+func init() {
+	// Log as JSON instead of the default ASCII formatter.
+	log.SetFormatter(&log.JSONFormatter{})
+
+	// Output to stdout instead of the default stderr
+	// Can be any io.Writer, see below for File example
+	log.SetOutput(os.Stdout)
+
+	// Only log the warning severity or above.
+	log.SetLevel(log.InfoLevel)
+}
+
 func main() {
-	xlsxTT()
 	initConf()
+
+	// Or optionally use the hook with an API key:
+	log.AddHook(logruseq.NewSeqHook("http://localhost:5341",
+		logruseq.OptionAPIKey("H7vifFTVyZ3RpSYg3NvI")))
+
+	log.
+		// WithFields(log.Fields{
+		// 	"animal": "walrus",
+		// }).
+		Info("A walrus appears")
+	xlsxTT()
 	// ExampleClient(newRedisOptions())
 
 	saveAddressToReids(newRedisOptions())
@@ -70,7 +94,6 @@ func xlsxTT() {
 	}
 
 	fmt.Println("----")
-	fmt.Printf(" map :%v", getAddressFactorySingleInstance().addressCode)
 }
 func cellVisitor(c *xlsx.Cell) error {
 	value, err := c.FormattedValue()
@@ -92,13 +115,14 @@ func rowVisitor(r *xlsx.Row) error {
 		name := r.GetCell(0)
 		adcode := r.GetCell(1)
 		nameValue, err := name.FormattedValue()
+		if err != nil {
+			panic(err)
+		}
 		adcodeValue, err := adcode.FormattedValue()
 		if err != nil {
-			fmt.Println(err.Error())
-			return nil
-		} else {
-			getAddressFactorySingleInstance().addressCode[adcodeValue] = nameValue
+			panic(err)
 		}
+		getAddressFactorySingleInstance().addressCode[adcodeValue] = nameValue
 
 	}
 	return nil
@@ -128,5 +152,5 @@ func saveAddressToReids(opt *redis.Options) {
 	if err != nil {
 		panic(err)
 	}
-
+	log.Info("Save chinaCode to redis success!")
 }
